@@ -1,75 +1,88 @@
-val Routine =
-  "0 1\n" +
-    "A\n" +
-    "A 0 1 R B\n" +
-    "A 1 1 L B\n" +
-    "B 0 1 L A\n" +
-    "B 1 0 L C\n" +
-    "C 0 1 R F\n" +
-    "C 1 1 L D\n" +
-    "D 0 1 R D\n" +
-    "D 1 0 R A\n" +
-    "0"
+import scala.annotation.tailrec
+import scala.io.BufferedSource
+/*
+  Turing Machine Simulator:
+  This takes in a String of the following form:
+  <Word Language>
+  <Blank Character>
+  <Start State>
+  <Final State>
+  <Instruction 1>
+  ...
+  <Instruction N>
+  <Start Word>
 
-type Instruction = Map[String, (String,String,String)]
+  and "runs" its equivalent Turing Machine prints its output and steps to STDOUT.
 
-def tokenize(l:List[String]) = l match{
-  case List(a,b,c,d,e) => (a,b,c,d,e)
+  A machine will continue running instructions until it sees the final state after which it will output the final word
+  it generated as well as its current position and the number of steps it took.
+
+  Here's an example of an instruction:
+  A 0 1 R B
+  It should read is "When I'm in state A, and I see the character '0' I'll replace that '0' with a '1', go right,
+  and go to state 'B'"
+  The start word is simply an initial word constructed from the word language.
+ */
+def makeTuringMachine(Source:String){
+  type Instruction = Map[String, (String,String,String)]
+
+  def createInstruction(l:List[String] = List("")) =
+    l match {
+    case List(cs, cl, rl, d, ns) => Map(cs ++ cl ->(rl, d, ns))
+    case _ => Map("" ->("", "", ""))
+  }
+
+  def parseInstructions(l: List[String]): Instruction = {
+    val instructionList = l.map(x => createInstruction(x.split(" ").toList))
+    instructionList.foldLeft[Instruction](createInstruction())((map1, map2) => map1 ++ map2)
+  }
+
+  val machineParameters = Source.split("\n").toList
+  val instructions = machineParameters.slice(4, machineParameters.size - 1)
+  val blankCharacter = machineParameters(1)
+  val finalState = machineParameters(3)
+  val machine = (machineParameters.head,
+    machineParameters(2),
+    parseInstructions(instructions),
+    machineParameters.last)
+
+  def evaluateDirection(position: Int,
+                        direction: String):Int =
+    direction match {
+    case "R" => position + 1
+    case "L" => if (position < 1) 0 else position - 1
+  }
+
+  @tailrec
+  def run(currentState: String,
+          instructionMap: Instruction,
+          currentWord: Seq[String],
+          position: Int= 0,
+          step: Int = 0): Unit =
+    currentState match {
+    case `finalState` =>
+      println("Result: " ++ currentWord.mkString("") ++ "\n" ++
+        "Final Position: " ++ position.toString ++ "\n" ++
+        "Number of Steps: " ++ step.toString ++ "\n")
+    case _ =>
+      val resultTuple = instructionMap.get(currentState +
+        (if (currentWord.isDefinedAt(position))
+          currentWord(position).toString
+        else `blankCharacter`))
+      val resultLetter = resultTuple.get._1
+      val direction = resultTuple.get._2
+      val newState = resultTuple.get._3
+      val newPosition = evaluateDirection(position, direction)
+      val newWord = if (position > currentWord.length - 1) currentWord ++ Seq(resultLetter)
+      else if (position <= 0 && direction == "L") Seq(`blankCharacter`) ++ currentWord.updated(position, resultLetter)
+      else currentWord.updated(position, resultLetter)
+      run(newState, instructionMap, newWord, newPosition, step + 1)
+  }
+  run(machine._2,                                 //currentState
+    machine._3,                                   //instructions
+    machine._4.toList.map(x => x.toString).toSeq) //initial Word
+
 }
-
-def createDictionary(t:(String, String, String, String, String)) = t match{
-  case (cs, cl, rl, d, ns) => Map(cs ++ cl -> (rl, d, ns))
-  case _ => Map("" -> ("","",""))
-}
-
-def parse(s:String):Instruction={
-  val charList = s.split(" ").toList
-  val tokens = tokenize(charList)
-  val dictionaries = createDictionary(tokens)
-  //println(dictionaries)
-  dictionaries
-}
-def parseInstructions(l:List[String]):Instruction={
-  val dictionaryList = l.map(x  => parse(x))
-  dictionaryList.foldLeft[Instruction](createDictionary(("","","","","")))((map1, map2) => map1 ++ map2)
-}
-
-def evaluateDirection(position:Int, direction:String):Int = direction match {
-  case "R" => position + 1
-  case "L" => if(position < 1) 0 else position - 1
-}
-
-def run(currentState:String,instructionMap:Instruction,currentWord:Seq[String],position:Int,step:Int): Unit= currentState match {
-  case "F" =>
-    println((currentWord,position,step))
-  case _ =>
-    val resultTuple = instructionMap.get(currentState + (if (currentWord.isDefinedAt(position))currentWord(position).toString else "0"))
-    val resultLetter = resultTuple.get._1
-    val direction = resultTuple.get._2
-    val newState = resultTuple.get._3
-    val newPosition = evaluateDirection(position, direction)
-    val newWord = if(position > currentWord.length-1 )currentWord ++ Seq(resultLetter)
-                  else if(position <= 0 && direction == "L") Seq("0") ++ currentWord.updated(position,resultLetter)
-                  else currentWord.updated(position,resultLetter)
-    //println((newState,resultLetter,direction,newPosition,newWord))
-    run(newState,instructionMap,newWord,newPosition,step+1)
-}
-
-def initialize(t:(String,String,Instruction,String)):Unit={
-  val language = t._1
-  val startState = t._2
-  val instructionMap = t._3
-  val startWord = Seq(t._4)
-  val position = 0
-  val step = 0
-  //println("Initial:")
-  //println(startState,startWord,position)
-  run(startState,instructionMap,startWord,position,step)
-}
-
-val parseList = Routine.split("\n").toList
-val instructions = parseList.slice(2, parseList.size-1)
-val outerTuple = (parseList.head,parseList(1),parseInstructions(instructions),parseList.last)
-initialize(outerTuple)
-
-//print(outerTuple)
+val source = scala.io.Source.fromFile("test.txt")
+val lines = source.getLines().mkString("\n")
+makeTuringMachine(lines)

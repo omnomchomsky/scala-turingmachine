@@ -12,7 +12,7 @@ import scala.io.BufferedSource
   <Instruction N>
   <Start Word>
 
-  and "runs" its equivalent Turing Machine prints its output and steps to STDOUT.
+  and "runs" its equivalent Turing Machine.
 
   A machine will continue running instructions until it sees the final state after which it will output the final word
   it generated as well as its current position and the number of steps it took.
@@ -26,8 +26,7 @@ import scala.io.BufferedSource
 def makeTuringMachine(Source:String){
   type Instruction = Map[String, (String,String,String)]
 
-  def createInstruction(l:List[String] = List("")) =
-    l match {
+  def createInstruction(l:List[String] = List("")) = l match {
     case List(cs, cl, rl, d, ns) => Map(cs ++ cl ->(rl, d, ns))
     case _ => Map("" ->("", "", ""))
   }
@@ -41,34 +40,19 @@ def makeTuringMachine(Source:String){
   val instructions = machineParameters.slice(4, machineParameters.size - 1)
   val blankCharacter = machineParameters(1)
   val finalState = machineParameters(3)
-  val machine = (machineParameters.head,
-    machineParameters(2),
-    parseInstructions(instructions),
-    machineParameters.last)
+  val machine = (machineParameters.head, machineParameters(2), parseInstructions(instructions), machineParameters.last)
 
-  def evaluateDirection(position: Int,
-                        direction: String):Int =
-    direction match {
+  def evaluateDirection(position: Int, direction: String):Int = direction match {
     case "R" => position + 1
     case "L" => if (position < 1) 0 else position - 1
   }
 
   @tailrec
-  def run(currentState: String,
-          instructionMap: Instruction,
-          currentWord: Seq[String],
-          position: Int= 0,
-          step: Int = 0): Unit =
-    currentState match {
+  def run(currentState: String, instructionMap: Instruction, currentWord: Seq[String], position: Int= 0, step: Int = 0): Unit = currentState match {
     case `finalState` =>
-      println("Result: " ++ currentWord.mkString("") ++ "\n" ++
-        "Final Position: " ++ position.toString ++ "\n" ++
-        "Number of Steps: " ++ step.toString ++ "\n")
+      println("Result: " ++ currentWord.mkString("") ++ "\n" ++ "Final Position: " ++ position.toString ++ "\n" ++ "Number of Steps: " ++ step.toString ++ "\n")
     case _ =>
-      val resultTuple = instructionMap.get(currentState +
-        (if (currentWord.isDefinedAt(position))
-          currentWord(position).toString
-        else `blankCharacter`))
+      val resultTuple = instructionMap.get(currentState + (if (currentWord.isDefinedAt(position)) currentWord(position).toString else `blankCharacter`))
       val resultLetter = resultTuple.get._1
       val direction = resultTuple.get._2
       val newState = resultTuple.get._3
@@ -78,11 +62,8 @@ def makeTuringMachine(Source:String){
       else currentWord.updated(position, resultLetter)
       run(newState, instructionMap, newWord, newPosition, step + 1)
   }
-  run(machine._2,                                 //currentState
-    machine._3,                                   //instructions
-    machine._4.toList.map(x => x.toString).toSeq) //initial Word
-
+  run(machine._2,machine._3,machine._4.toList.map(x => x.toString).toSeq) //initial Word
 }
-val source = scala.io.Source.fromFile("test.txt")
+val source = scala.io.Source.fromFile("unaryadder.txt")
 val lines = source.getLines().mkString("\n")
 makeTuringMachine(lines)

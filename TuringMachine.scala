@@ -62,7 +62,7 @@ def makeTuringMachine(Source:String){
       else currentWord.updated(position, resultLetter)
       run(newState, instructionMap, newWord, newPosition, step + 1)
   }
-  run(machine._2,machine._3,machine._4.toList.map(x => x.toString).toSeq) //initial Word
+  run(machine._2,machine._3,machine._4.toList.map(x => x.toString).toSeq)
 }
 val source = scala.io.Source.fromFile("unaryadder.txt")
 val lines = source.getLines().mkString("\n")
